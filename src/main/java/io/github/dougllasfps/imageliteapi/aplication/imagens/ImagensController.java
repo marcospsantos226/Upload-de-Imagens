@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.List;
 
 //ENDPOINT PARA RECEBIMENTO DE IMAGENS
@@ -24,6 +26,7 @@ import java.util.List;
 public class ImagensController {
 
     private final ImageService service;
+    private final ImageMapper mapper;
 
     @PostMapping//Quem for acessar a API para salvar uma imagem, fará uma requisição post para v1 images
     //Método que vai receber o upload de imagem
@@ -37,16 +40,20 @@ public class ImagensController {
         log.info("Media type: {}", MediaType.valueOf(file.getContentType()));
 
 
-        Image image = Image.builder()
-                .name(name)
-                .tags(String.join( ", ", tags))
-                .size(file.getSize())
-                .extension(ImageExtension.valueOf(MediaType.valueOf(file.getContentType())))
-                .file(file.getBytes())
-                .build();
+        Image image = mapper.mapToImage(file, name, tags);
 
-        service.save(image);
+        Image savedImage = service.save(image);
+        URI imageUri = buildImageURL(savedImage);
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.created(imageUri).build();
+    }
+
+    private URI buildImageURL(Image image){
+        String imagePath = "/" + image.getId();
+        return ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path(imagePath)
+                .build()
+                .toUri();
     }
 }
